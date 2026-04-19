@@ -1,0 +1,18 @@
+{
+  "name": "Trail Tracker",
+  "short_name": "Trails",
+  "description": "Your Colorado Trail Database",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#f4f1ea",
+  "theme_color": "#2d4a3e",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' fill='%232d4a3e'/%3E%3Ctext x='256' y='340' font-size='280' text-anchor='middle' fill='%23f4f1ea'%3E⛰️%3C/text%3E%3C/svg%3E",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
