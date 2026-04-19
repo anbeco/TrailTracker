@@ -375,6 +375,56 @@
             opacity: 0.3;
         }
         
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(45, 74, 62, 0.8);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .modal-overlay.active {
+            display: flex;
+        }
+        
+        .modal-content {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            max-width: 400px;
+            margin: 20px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+        }
+        
+        .modal-title {
+            font-size: 1.4em;
+            font-weight: 700;
+            color: var(--pine);
+            margin-bottom: 16px;
+        }
+        
+        .modal-text {
+            color: var(--forest);
+            margin-bottom: 24px;
+            line-height: 1.5;
+        }
+        
+        .modal-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        
+        .btn-full {
+            width: 100%;
+            padding: 14px;
+        }
+        
         @media (max-width: 600px) {
             h1 {
                 font-size: 2em;
@@ -447,6 +497,12 @@
             <button class="btn-primary" onclick="toggleForm()">+ Add Trail</button>
         </div>
         
+        <div class="controls" style="margin-top: -18px;">
+            <button class="btn-secondary" onclick="exportTrails()">📥 Export Trails</button>
+            <button class="btn-secondary" onclick="document.getElementById('importFile').click()">📤 Import Trails</button>
+            <input type="file" id="importFile" accept=".json" style="display: none;" onchange="importTrails(event)">
+        </div>
+        
         <div class="form-section" id="trailForm">
             <h2 style="margin-bottom: 24px; color: var(--pine);">Add New Trail</h2>
             <form onsubmit="saveTrail(event)">
@@ -501,6 +557,18 @@
         </div>
         
         <div class="trail-list" id="trailList"></div>
+    </div>
+    
+    <div class="modal-overlay" id="importModal">
+        <div class="modal-content">
+            <div class="modal-title">Import Trails</div>
+            <div class="modal-text" id="importModalText">Ready to import trails.</div>
+            <div class="modal-buttons">
+                <button class="btn-full btn-primary" onclick="confirmImport('replace')">Replace All Trails</button>
+                <button class="btn-full btn-secondary" onclick="confirmImport('merge')">Merge with Existing</button>
+                <button class="btn-full" onclick="cancelImport()" style="background: #999;">Cancel</button>
+            </div>
+        </div>
     </div>
     
     <script>
@@ -642,6 +710,78 @@
         document.getElementById('searchInput').addEventListener('input', renderTrails);
         document.getElementById('filterDirection').addEventListener('change', renderTrails);
         document.getElementById('filterActivity').addEventListener('change', renderTrails);
+        
+        function exportTrails() {
+            const dataStr = JSON.stringify(trails, null, 2);
+            const dataBlob = new Blob([dataStr], { type: 'application/json' });
+            const url = URL.createObjectURL(dataBlob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `trails-backup-${new Date().toISOString().split('T')[0]}.json`;
+            link.click();
+            URL.revokeObjectURL(url);
+        }
+        
+        let pendingImportData = null;
+        
+        function importTrails(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const importedTrails = JSON.parse(e.target.result);
+                    
+                    if (!Array.isArray(importedTrails)) {
+                        alert('Invalid file format. Please select a valid trails backup file.');
+                        return;
+                    }
+                    
+                    pendingImportData = importedTrails;
+                    document.getElementById('importModalText').textContent = 
+                        `Found ${importedTrails.length} trails in backup file. How would you like to import them?`;
+                    document.getElementById('importModal').classList.add('active');
+                    
+                } catch (error) {
+                    alert('Error reading file. Please make sure it is a valid trails backup file.');
+                }
+            };
+            reader.readAsText(file);
+            
+            event.target.value = '';
+        }
+        
+        function confirmImport(action) {
+            if (!pendingImportData) return;
+            
+            if (action === 'replace') {
+                trails = pendingImportData;
+                localStorage.setItem('trails', JSON.stringify(trails));
+                alert(`Replaced all trails with ${pendingImportData.length} imported trails.`);
+            } else if (action === 'merge') {
+                const existingNames = new Set(trails.map(t => t.name.toLowerCase()));
+                const newTrails = pendingImportData.filter(t => !existingNames.has(t.name.toLowerCase()));
+                trails = [...trails, ...newTrails];
+                localStorage.setItem('trails', JSON.stringify(trails));
+                
+                const skipped = pendingImportData.length - newTrails.length;
+                if (skipped > 0) {
+                    alert(`Merged ${newTrails.length} new trails (skipped ${skipped} duplicates).`);
+                } else {
+                    alert(`Merged ${newTrails.length} new trails.`);
+                }
+            }
+            
+            renderTrails();
+            updateStats();
+            cancelImport();
+        }
+        
+        function cancelImport() {
+            document.getElementById('importModal').classList.remove('active');
+            pendingImportData = null;
+        }
         
         renderTrails();
         updateStats();
